@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/OneSignal/tracing-tail-sampling/"
 documentation = "https://docs.rs/onesignal-tracing-tail-sampling"
+description = "Tail sampling support for tracing with OpenTelemetry"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
