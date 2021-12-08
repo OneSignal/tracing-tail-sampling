@@ -45,7 +45,7 @@ pub trait OpenTelemetrySpanExt {
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
     /// use opentelemetry::sdk::propagation::TraceContextPropagator;
-    /// use tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
@@ -79,7 +79,7 @@ pub trait OpenTelemetrySpanExt {
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
     /// use opentelemetry::sdk::propagation::TraceContextPropagator;
-    /// use tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
@@ -121,7 +121,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// ```rust
     /// use opentelemetry::Context;
-    /// use tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use tracing::Span;
     ///
     /// fn make_request(cx: Context) {

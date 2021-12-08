@@ -103,7 +103,7 @@ where
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
 /// // that impls `LookupSpan`
-/// let subscriber = Registry::default().with(tracing_tail_sample::opentelemetry::layer());
+/// let subscriber = Registry::default().with(onesignal_tracing_tail_sample::opentelemetry::layer());
 /// # drop(subscriber);
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, noop::NoopTracer>
@@ -322,7 +322,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use tracing_tail_sample::opentelemetry::OpenTelemetryLayer;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetryLayer;
     /// use tracing_subscriber::layer::SubscriberExt;
     /// use tracing_subscriber::Registry;
     ///
@@ -368,7 +368,7 @@ where
     ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a layer with the configured tracer
-    /// let otel_layer = tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
+    /// let otel_layer = onesignal_tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`

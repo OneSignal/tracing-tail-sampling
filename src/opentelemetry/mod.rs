@@ -88,7 +88,7 @@
 //! let tracer = stdout::new_pipeline().install_simple();
 //!
 //! // Create a tracing layer with the configured tracer
-//! let telemetry = tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
+//! let telemetry = onesignal_tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
 //!
 //! // Use the tracing subscriber `Registry`, or any other subscriber
 //! // that impls `LookupSpan`
