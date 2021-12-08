@@ -18,6 +18,8 @@ use tracing_subscriber::registry::LookupSpan;
 mod extensions;
 use extensions::{Extensions, ExtensionsInner, ExtensionsMut};
 
+pub mod opentelemetry;
+
 /// Buffers data and builds complete traces prior to exporting
 #[derive(Default, Debug)]
 pub struct TraceContextLayer<S> {
@@ -63,6 +65,10 @@ impl Trace {
     pub fn extensions_mut(&self) -> ExtensionsMut<'_> {
         ExtensionsMut::new(self.inner.ext.write().expect("Mutex poisoned"))
     }
+}
+
+pub struct SampleDecision {
+    record_trace: bool,
 }
 
 impl TraceContext {

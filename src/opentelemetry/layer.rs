@@ -25,12 +25,13 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-use crate::PreSampledTracer;
+use crate::opentelemetry::PreSampledTracer;
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
     Context as OtelContext, Key, KeyValue,
 };
 use std::any::TypeId;
+use std::collections::VecDeque;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
@@ -41,6 +42,28 @@ use tracing_log::NormalizeEvent;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::Layer;
+
+use crate::{SampleDecision, TraceContext};
+
+#[derive(Default)]
+struct TraceCache {
+    spans: VecDeque<otel::SpanBuilder>,
+}
+
+impl TraceCache {
+    fn send_trace<T>(&mut self, tracer: &T)
+    where
+        T: otel::Tracer + PreSampledTracer + 'static,
+    {
+        while let Some(span) = self.spans.pop_front() {
+            span.start(tracer);
+        }
+    }
+
+    fn clear(&mut self) {
+        self.spans.clear();
+    }
+}
 
 const SPAN_NAME_FIELD: &str = "otel.name";
 const SPAN_KIND_FIELD: &str = "otel.kind";
@@ -80,7 +103,7 @@ where
 ///
 /// // Use the tracing subscriber `Registry`, or any other subscriber
 /// // that impls `LookupSpan`
-/// let subscriber = Registry::default().with(tracing_opentelemetry::layer());
+/// let subscriber = Registry::default().with(tracing_tail_sample::opentelemetry::layer());
 /// # drop(subscriber);
 /// ```
 pub fn layer<S>() -> OpenTelemetryLayer<S, noop::NoopTracer>
@@ -299,7 +322,7 @@ where
     /// # Examples
     ///
     /// ```no_run
-    /// use tracing_opentelemetry::OpenTelemetryLayer;
+    /// use tracing_tail_sample::opentelemetry::OpenTelemetryLayer;
     /// use tracing_subscriber::layer::SubscriberExt;
     /// use tracing_subscriber::Registry;
     ///
@@ -345,7 +368,7 @@ where
     ///     .expect("Error initializing Jaeger exporter");
     ///
     /// // Create a layer with the configured tracer
-    /// let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    /// let otel_layer = tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
     ///
     /// // Use the tracing subscriber `Registry`, or any other subscriber
     /// // that impls `LookupSpan`
@@ -617,8 +640,40 @@ where
                 }
             }
 
-            // Assign end time, build and start span, drop span to export
-            builder.with_end_time(SystemTime::now()).start(&self.tracer);
+            // Assign end time
+            let builder = builder.with_end_time(SystemTime::now());
+
+            if let Some(trace_context) = extensions.get_mut::<TraceContext>() {
+                // If there's an active trace context, push the complete builder there so that tail
+                // sampling can be done.
+                let mut trace_ext = trace_context.trace.extensions_mut();
+                if trace_ext.get_mut::<TraceCache>().is_none() {
+                    trace_ext.insert(TraceCache::default());
+                }
+
+                let record_trace = {
+                    let sample_decision = trace_ext.get_mut::<SampleDecision>();
+                    sample_decision.map(|d| d.record_trace).unwrap_or(true)
+                };
+
+                let cache = trace_ext
+                    .get_mut::<TraceCache>()
+                    .expect("Cache not found, this is a bug");
+
+                cache.spans.push_back(builder);
+
+                // Now, if this is the top level span, see if we can flush.
+                if trace_context.parent_id.is_none() {
+                    if record_trace {
+                        cache.send_trace(&self.tracer);
+                    } else {
+                        cache.clear();
+                    }
+                }
+            } else {
+                // build and start span, drop span to export
+                builder.start(&self.tracer);
+            }
         }
     }
 
