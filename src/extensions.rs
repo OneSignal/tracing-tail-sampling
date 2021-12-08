@@ -1,6 +1,6 @@
 // taken from https://github.com/hyperium/http/blob/master/src/extensions.rs.
 
-use crate::sync::{RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{RwLockReadGuard, RwLockWriteGuard};
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
@@ -35,13 +35,11 @@ impl Hasher for IdHasher {
 
 /// An immutable, read-only reference to a Span's extensions.
 #[derive(Debug)]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct Extensions<'a> {
     inner: RwLockReadGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> Extensions<'a> {
-    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockReadGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -54,13 +52,11 @@ impl<'a> Extensions<'a> {
 
 /// An mutable reference to a Span's extensions.
 #[derive(Debug)]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub struct ExtensionsMut<'a> {
     inner: RwLockWriteGuard<'a, ExtensionsInner>,
 }
 
 impl<'a> ExtensionsMut<'a> {
-    #[cfg(feature = "registry")]
     pub(crate) fn new(inner: RwLockWriteGuard<'a, ExtensionsInner>) -> Self {
         Self { inner }
     }
@@ -120,9 +116,7 @@ pub(crate) struct ExtensionsInner {
 
 impl ExtensionsInner {
     /// Create an empty `Extensions`.
-    #[cfg(any(test, feature = "registry"))]
     #[inline]
-    #[cfg(any(test, feature = "registry"))]
     pub(crate) fn new() -> ExtensionsInner {
         ExtensionsInner {
             map: AnyMap::default(),
@@ -139,7 +133,7 @@ impl ExtensionsInner {
             .and_then(|boxed| {
                 #[allow(warnings)]
                 {
-                    (boxed as Box<Any + 'static>)
+                    (boxed as Box<dyn Any + 'static>)
                         .downcast()
                         .ok()
                         .map(|boxed| *boxed)
@@ -168,7 +162,7 @@ impl ExtensionsInner {
         self.map.remove(&TypeId::of::<T>()).and_then(|boxed| {
             #[allow(warnings)]
             {
-                (boxed as Box<Any + 'static>)
+                (boxed as Box<dyn Any + 'static>)
                     .downcast()
                     .ok()
                     .map(|boxed| *boxed)
@@ -181,7 +175,7 @@ impl ExtensionsInner {
     ///
     /// This permits the hash map allocation to be pooled by the registry so
     /// that future spans will not need to allocate new hashmaps.
-    #[cfg(any(test, feature = "registry"))]
+    #[allow(unused)]
     pub(crate) fn clear(&mut self) {
         self.map.clear();
     }
