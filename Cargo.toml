@@ -1,7 +1,7 @@
 [package]
 name = "onesignal-tracing-tail-sample"
-version = "0.0.2"
-edition = "2021"
+version = "0.0.3"
+edition = "2018"
 license = "MIT"
 repository = "https://github.com/OneSignal/tracing-tail-sampling/"
 documentation = "https://docs.rs/onesignal-tracing-tail-sampling"
