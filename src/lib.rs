@@ -68,7 +68,7 @@ impl Trace {
 }
 
 pub struct SampleDecision {
-    record_trace: bool,
+    pub record_trace: bool,
 }
 
 impl TraceContext {
