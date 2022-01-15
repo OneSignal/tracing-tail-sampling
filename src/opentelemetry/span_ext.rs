@@ -25,7 +25,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-use crate::layer::WithContext;
+use crate::opentelemetry::layer::WithContext;
 use opentelemetry::{trace::SpanContext, Context, KeyValue};
 
 /// Utility functions to allow tracing [`Span`]s to accept and return
@@ -45,7 +45,7 @@ pub trait OpenTelemetrySpanExt {
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
     /// use opentelemetry::sdk::propagation::TraceContextPropagator;
-    /// use tracing_opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
@@ -79,7 +79,7 @@ pub trait OpenTelemetrySpanExt {
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
     /// use opentelemetry::sdk::propagation::TraceContextPropagator;
-    /// use tracing_opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
     ///
@@ -121,7 +121,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// ```rust
     /// use opentelemetry::Context;
-    /// use tracing_opentelemetry::OpenTelemetrySpanExt;
+    /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use tracing::Span;
     ///
     /// fn make_request(cx: Context) {

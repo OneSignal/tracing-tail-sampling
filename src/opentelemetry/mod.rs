@@ -88,7 +88,7 @@
 //! let tracer = stdout::new_pipeline().install_simple();
 //!
 //! // Create a tracing layer with the configured tracer
-//! let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+//! let telemetry = onesignal_tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);
 //!
 //! // Use the tracing subscriber `Registry`, or any other subscriber
 //! // that impls `LookupSpan`
@@ -120,11 +120,6 @@
 //!
 #![deny(unreachable_pub)]
 #![cfg_attr(test, deny(warnings))]
-#![doc(html_root_url = "https://docs.rs/tracing-opentelemetry/0.16.0")]
-#![doc(
-    html_logo_url = "https://raw.githubusercontent.com/tokio-rs/tracing/master/assets/logo-type.png",
-    issue_tracker_base_url = "https://github.com/tokio-rs/tracing/issues/"
-)]
 #![cfg_attr(docsrs, deny(rustdoc::broken_intra_doc_links))]
 
 /// Implementation of the trace::Layer as a source of OpenTelemetry data.

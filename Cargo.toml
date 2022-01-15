@@ -1,7 +1,11 @@
 [package]
-name = "tracing-tail-sample"
-version = "0.1.0"
-edition = "2021"
+name = "onesignal-tracing-tail-sample"
+version = "0.0.3"
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/OneSignal/tracing-tail-sampling/"
+documentation = "https://docs.rs/onesignal-tracing-tail-sampling"
+description = "Tail sampling support for tracing with OpenTelemetry"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -9,3 +13,11 @@ edition = "2021"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { version = "0.1" }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
+opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
+uuid = { version = "0.8", features = ["v4"] }
+
+[dev-dependencies]
+async-trait = "0.1"
+criterion = { version = "0.3", default_features = false }
+opentelemetry-jaeger = "0.15"
+
