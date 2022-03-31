@@ -55,13 +55,15 @@ impl TraceCache {
     where
         T: otel::Tracer + PreSampledTracer + 'static,
     {
-        while let Some(span) = self.spans.pop_front() {
+        let trace_spans = std::mem::replace(&mut self.spans, Default::default());
+
+        for span in trace_spans {
             span.start(tracer);
         }
     }
 
     fn clear(&mut self) {
-        self.spans.clear();
+        drop(std::mem::replace(&mut self.spans, Default::default()));
     }
 }
 
