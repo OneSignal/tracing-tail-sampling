@@ -148,11 +148,11 @@ fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
     }
 }
 
-fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
+fn str_to_status_code(s: &str) -> Option<otel::Status> {
     match s {
-        s if s.eq_ignore_ascii_case("unset") => Some(otel::StatusCode::Unset),
-        s if s.eq_ignore_ascii_case("ok") => Some(otel::StatusCode::Ok),
-        s if s.eq_ignore_ascii_case("error") => Some(otel::StatusCode::Error),
+        s if s.eq_ignore_ascii_case("unset") => Some(otel::Status::Unset),
+        s if s.eq_ignore_ascii_case("ok") => Some(otel::Status::Ok),
+        s if s.eq_ignore_ascii_case("error") => Some(otel::Status::error("error")),
         _ => None,
     }
 }
@@ -281,8 +281,20 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         match field.name() {
             SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
-            SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
-            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            SPAN_STATUS_CODE_FIELD => {
+                if let Some(status) = str_to_status_code(value) {
+                    // don't set an error status if it's already set because a
+                    // *real* message might be removed.
+                    if status == otel::Status::Unset || status == otel::Status::Ok {
+                        self.0.status = status;
+                    }
+                }
+            }
+            SPAN_STATUS_MESSAGE_FIELD => {
+                // According to the OTEL spec, status messages may only be set
+                // if the status is error.
+                self.0.status = otel::Status::error(value.to_owned());
+            }
             _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
@@ -292,14 +304,23 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
     ///
     /// [`Span`]: opentelemetry::trace::Span
     fn record_debug(&mut self, field: &field::Field, value: &dyn fmt::Debug) {
+        let value = format!("{:?}", value);
         match field.name() {
-            SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
-            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
+            SPAN_NAME_FIELD => self.0.name = value.into(),
+            SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&value),
             SPAN_STATUS_CODE_FIELD => {
-                self.0.status_code = str_to_status_code(&format!("{:?}", value))
+                if let Some(status) = str_to_status_code(&value) {
+                    // don't set an error status if it's already set because a
+                    // *real* message might be removed.
+                    if status == otel::Status::Unset || status == otel::Status::Ok {
+                        self.0.status = status;
+                    }
+                }
             }
             SPAN_STATUS_MESSAGE_FIELD => {
-                self.0.status_message = Some(format!("{:?}", value).into())
+                // According to the OTEL spec, status messages may only be set
+                // if the status is error.
+                self.0.status = otel::Status::error(value.to_owned());
             }
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
@@ -603,8 +624,10 @@ where
 
             let mut extensions = span.extensions_mut();
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
-                if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
-                    builder.status_code = Some(otel::StatusCode::Error);
+                if otel::Status::Unset == builder.status
+                    && *meta.level() == tracing_core::Level::ERROR
+                {
+                    builder.status = otel::Status::error("tracing_core::Level::ERROR");
                 }
 
                 if let Some(ref mut events) = builder.events {
@@ -777,7 +800,7 @@ mod tests {
             false
         }
         fn set_attribute(&mut self, _attribute: KeyValue) {}
-        fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
+        fn set_status(&mut self, _code: otel::Status) {}
         fn update_name<T: Into<Cow<'static, str>>>(&mut self, _new_name: T) {}
         fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
     }

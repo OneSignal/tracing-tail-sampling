@@ -25,12 +25,12 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-use opentelemetry::sdk::trace::{SamplingDecision, SamplingResult, Tracer, TracerProvider};
+use opentelemetry::sdk::trace::{Tracer, TracerProvider};
 use opentelemetry::{
     trace as otel,
     trace::{
-        noop, SpanBuilder, SpanContext, SpanId, SpanKind, TraceContextExt, TraceFlags, TraceId,
-        TraceState,
+        noop, SamplingDecision, SamplingResult, SpanBuilder, SpanContext, SpanId, SpanKind,
+        TraceContextExt, TraceFlags, TraceId, TraceState,
     },
     Context as OtelContext,
 };
