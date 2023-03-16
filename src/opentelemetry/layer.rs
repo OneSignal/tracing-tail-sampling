@@ -28,14 +28,13 @@
 use crate::opentelemetry::{OtelData, PreSampledTracer};
 use opentelemetry::{
     trace::{self as otel, noop, TraceContextExt},
-    Context as OtelContext, Key, KeyValue,
+    Context as OtelContext, Key, KeyValue, Value,
 };
-use std::any::TypeId;
-use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt;
 use std::marker;
 use std::time::{Instant, SystemTime};
+use std::{any::TypeId, borrow::Cow};
 use tracing_core::span::{self, Attributes, Id, Record};
 use tracing_core::{field, Event, Subscriber};
 #[cfg(feature = "tracing-log")]
@@ -70,9 +69,7 @@ impl TraceCache {
 
 const SPAN_NAME_FIELD: &str = "otel.name";
 const SPAN_KIND_FIELD: &str = "otel.kind";
-const SPAN_STATUS_CODE_FIELD: &str = "otel.status_code";
-const SPAN_STATUS_MESSAGE_FIELD: &str = "otel.status_message";
-
+const SPAN_STATUS: &str = "otel.status";
 /// An [OpenTelemetry] propagation layer for use in a project that uses
 /// [tracing].
 ///
@@ -149,11 +146,13 @@ fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
     }
 }
 
-fn str_to_status_code(s: &str) -> Option<otel::StatusCode> {
+fn string_to_status(s: String) -> Option<otel::Status> {
     match s {
-        s if s.eq_ignore_ascii_case("unset") => Some(otel::StatusCode::Unset),
-        s if s.eq_ignore_ascii_case("ok") => Some(otel::StatusCode::Ok),
-        s if s.eq_ignore_ascii_case("error") => Some(otel::StatusCode::Error),
+        s if s.eq_ignore_ascii_case("unset") => Some(otel::Status::Unset),
+        s if s.eq_ignore_ascii_case("ok") => Some(otel::Status::Ok),
+        s if s[0.."error".len()].eq_ignore_ascii_case("error") => Some(otel::Status::Error {
+            description: Cow::Owned(s),
+        }),
         _ => None,
     }
 }
@@ -248,7 +247,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     fn record(&mut self, attribute: KeyValue) {
         debug_assert!(self.0.attributes.is_some());
         if let Some(v) = self.0.attributes.as_mut() {
-            v.push(attribute);
+            v.insert(attribute.key, attribute.value);
         }
     }
 }
@@ -282,8 +281,10 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         match field.name() {
             SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
-            SPAN_STATUS_CODE_FIELD => self.0.status_code = str_to_status_code(value),
-            SPAN_STATUS_MESSAGE_FIELD => self.0.status_message = Some(value.to_owned().into()),
+            SPAN_STATUS => {
+                self.0.status =
+                    string_to_status(value.to_string()).expect("could not map to status")
+            }
             _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
@@ -296,11 +297,9 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         match field.name() {
             SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
-            SPAN_STATUS_CODE_FIELD => {
-                self.0.status_code = str_to_status_code(&format!("{:?}", value))
-            }
-            SPAN_STATUS_MESSAGE_FIELD => {
-                self.0.status_message = Some(format!("{:?}", value).into())
+            SPAN_STATUS => {
+                self.0.status = string_to_status(format!("{:?}", value).to_string())
+                    .expect("could not map to status")
             }
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
@@ -319,12 +318,20 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         let mut next_err = value.source();
 
         while let Some(err) = next_err {
-            chain.push(Cow::Owned(format!("{}", err)));
+            chain.push(format!("{}", err));
             next_err = err.source();
         }
 
         self.record(Key::new(field.name()).string(format!("{}", value)));
-        self.record(Key::new(format!("{}.chain", field.name())).array(chain));
+
+        let chain_kvs = KeyValue::new(
+            format!("{}.chain", field.name()),
+            Value::Array(opentelemetry::Array::String(
+                chain.iter().map(|f| f.to_owned().into()).collect(),
+            )),
+        );
+
+        self.record(chain_kvs);
     }
 }
 
@@ -503,20 +510,20 @@ where
 
         let builder_attrs = builder
             .attributes
-            .get_or_insert(Vec::with_capacity(attrs.fields().len() + 3));
+            .get_or_insert(opentelemetry::trace::OrderMap::new());
 
         let meta = attrs.metadata();
 
         if let Some(filename) = meta.file() {
-            builder_attrs.push(KeyValue::new("code.filepath", filename));
+            builder_attrs.insert("code.filepath".into(), filename.into());
         }
 
         if let Some(module) = meta.module_path() {
-            builder_attrs.push(KeyValue::new("code.namespace", module));
+            builder_attrs.insert("code.namespace".into(), module.into());
         }
 
         if let Some(line) = meta.line() {
-            builder_attrs.push(KeyValue::new("code.lineno", line as i64));
+            builder_attrs.insert("code.lineno".into(), (line as i64).into());
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -625,8 +632,15 @@ where
 
             let mut extensions = span.extensions_mut();
             if let Some(OtelData { builder, .. }) = extensions.get_mut::<OtelData>() {
-                if builder.status_code.is_none() && *meta.level() == tracing_core::Level::ERROR {
-                    builder.status_code = Some(otel::StatusCode::Error);
+                match builder.status {
+                    otel::Status::Unset => {
+                        if *meta.level() == tracing_core::Level::ERROR {
+                            builder.status = otel::Status::Error {
+                                description: "".into(),
+                            }
+                        }
+                    }
+                    _ => {}
                 }
 
                 if let Some(ref mut events) = builder.events {
@@ -656,10 +670,13 @@ where
                     let idle_ns = KeyValue::new("idle_ns", timings.idle);
 
                     if let Some(ref mut attributes) = builder.attributes {
-                        attributes.push(busy_ns);
-                        attributes.push(idle_ns);
+                        attributes.insert(busy_ns.key, busy_ns.value);
+                        attributes.insert(idle_ns.key, idle_ns.value);
                     } else {
-                        builder.attributes = Some(vec![busy_ns, idle_ns]);
+                        let mut attributes = opentelemetry::trace::OrderMap::new();
+                        attributes.insert(busy_ns.key, busy_ns.value);
+                        attributes.insert(idle_ns.key, idle_ns.value);
+                        builder.attributes = Some(attributes);
                     }
                 }
             }
@@ -734,8 +751,8 @@ impl Timings {
 mod tests {
     use super::*;
     use crate::opentelemetry::OtelData;
-    use opentelemetry::trace::{noop, SpanKind, TraceFlags};
-    use opentelemetry::Value;
+    use opentelemetry::trace::{noop, TraceFlags};
+    use opentelemetry::{Array, Value};
     use std::borrow::Cow;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
@@ -801,7 +818,7 @@ mod tests {
             false
         }
         fn set_attribute(&mut self, _attribute: KeyValue) {}
-        fn set_status(&mut self, _code: otel::StatusCode, _message: String) {}
+        fn set_status(&mut self, _code: otel::Status) {}
         fn update_name<T: Into<Cow<'static, str>>>(&mut self, _new_name: T) {}
         fn end_with_timestamp(&mut self, _timestamp: SystemTime) {}
     }
@@ -832,7 +849,7 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
+            tracing::debug_span!("request", otel.kind = "server");
         });
 
         let recorded_kind = tracer
@@ -854,7 +871,7 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.status_code = ?otel::StatusCode::Ok);
+            tracing::debug_span!("request", otel.status = ?otel::Status::Ok);
         });
         let recorded_status_code = tracer
             .0
@@ -863,33 +880,10 @@ mod tests {
             .as_ref()
             .unwrap()
             .builder
-            .status_code;
-
-        assert_eq!(recorded_status_code, Some(otel::StatusCode::Ok))
-    }
-
-    #[test]
-    fn span_status_message() {
-        let tracer = TestTracer(Arc::new(Mutex::new(None)));
-        let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
-
-        let message = "message";
-
-        tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.status_message = message);
-        });
-
-        let recorded_status_message = tracer
-            .0
-            .lock()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .builder
-            .status_message
+            .status
             .clone();
 
-        assert_eq!(recorded_status_message, Some(message.into()))
+        assert_eq!(recorded_status_code, otel::Status::Ok)
     }
 
     #[test]
@@ -907,7 +901,7 @@ mod tests {
         let _g = existing_cx.attach();
 
         tracing::subscriber::with_default(subscriber, || {
-            tracing::debug_span!("request", otel.kind = %SpanKind::Server);
+            tracing::debug_span!("request");
         });
 
         let recorded_trace_id = tracer
@@ -949,7 +943,7 @@ mod tests {
             .clone();
         let keys = attributes
             .iter()
-            .map(|attr| attr.key.as_str())
+            .map(|(key, _)| key.as_str())
             .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
@@ -1015,19 +1009,16 @@ mod tests {
 
         let key_values = attributes
             .into_iter()
-            .map(|attr| (attr.key.as_str().to_owned(), attr.value))
+            .map(|(key, value)| (key.as_str().to_owned(), value))
             .collect::<HashMap<_, _>>();
 
         assert_eq!(key_values["error"].as_str(), "user error");
         assert_eq!(
             key_values["error.chain"],
-            Value::Array(
-                vec![
-                    Cow::Borrowed("intermediate error"),
-                    Cow::Borrowed("base error")
-                ]
-                .into()
-            )
+            Value::Array(Array::String(vec!(
+                "intermediate error".into(),
+                "base error".into()
+            ))),
         );
     }
 }
