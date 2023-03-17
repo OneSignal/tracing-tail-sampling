@@ -354,7 +354,7 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let tracer = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_agent_pipeline()
     ///     .with_service_name("trace_demo")
     ///     .install_simple()
     ///     .expect("Error initializing Jaeger exporter");
@@ -389,7 +389,7 @@ where
     /// use tracing_subscriber::Registry;
     ///
     /// // Create a jaeger exporter pipeline for a `trace_demo` service.
-    /// let tracer = opentelemetry_jaeger::new_pipeline()
+    /// let tracer = opentelemetry_jaeger::new_agent_pipeline()
     ///     .with_service_name("trace_demo")
     ///     .install_simple()
     ///     .expect("Error initializing Jaeger exporter");
