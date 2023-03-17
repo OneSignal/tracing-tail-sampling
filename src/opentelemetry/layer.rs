@@ -146,12 +146,12 @@ fn str_to_span_kind(s: &str) -> Option<otel::SpanKind> {
     }
 }
 
-fn string_to_status(s: String) -> Option<otel::Status> {
+fn string_to_status(s: &str) -> Option<otel::Status> {
     match s {
         s if s.eq_ignore_ascii_case("unset") => Some(otel::Status::Unset),
         s if s.eq_ignore_ascii_case("ok") => Some(otel::Status::Ok),
         s if s[0.."error".len()].eq_ignore_ascii_case("error") => Some(otel::Status::Error {
-            description: Cow::Owned(s),
+            description: Cow::Owned(s.to_string()),
         }),
         _ => None,
     }
@@ -281,10 +281,7 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
         match field.name() {
             SPAN_NAME_FIELD => self.0.name = value.to_string().into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(value),
-            SPAN_STATUS => {
-                self.0.status =
-                    string_to_status(value.to_string()).expect("could not map to status")
-            }
+            SPAN_STATUS => self.0.status = string_to_status(value).unwrap_or_default(),
             _ => self.record(KeyValue::new(field.name(), value.to_string())),
         }
     }
@@ -298,8 +295,8 @@ impl<'a> field::Visit for SpanAttributeVisitor<'a> {
             SPAN_NAME_FIELD => self.0.name = format!("{:?}", value).into(),
             SPAN_KIND_FIELD => self.0.span_kind = str_to_span_kind(&format!("{:?}", value)),
             SPAN_STATUS => {
-                self.0.status = string_to_status(format!("{:?}", value).to_string())
-                    .expect("could not map to status")
+                self.0.status =
+                    string_to_status(format!("{:?}", value).as_str()).unwrap_or_default()
             }
             _ => self.record(Key::new(field.name()).string(format!("{:?}", value))),
         }
@@ -669,15 +666,9 @@ where
                     let busy_ns = KeyValue::new("busy_ns", timings.busy);
                     let idle_ns = KeyValue::new("idle_ns", timings.idle);
 
-                    if let Some(ref mut attributes) = builder.attributes {
-                        attributes.insert(busy_ns.key, busy_ns.value);
-                        attributes.insert(idle_ns.key, idle_ns.value);
-                    } else {
-                        let mut attributes = opentelemetry::trace::OrderMap::new();
-                        attributes.insert(busy_ns.key, busy_ns.value);
-                        attributes.insert(idle_ns.key, idle_ns.value);
-                        builder.attributes = Some(attributes);
-                    }
+                    let attributes = builder.attributes.get_or_insert_with(|| Default::default());
+                    attributes.insert(busy_ns.key, busy_ns.value);
+                    attributes.insert(idle_ns.key, idle_ns.value);
                 }
             }
 
