@@ -1,0 +1,20 @@
+version: "3.2"
+services:
+  code:
+    image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+    stdin_open: true
+    tty: true
+    working_dir: /code
+    command: bash
+    environment:
+      RUST_TRACING: debug
+      CARGO_TARGET_DIR: "/cargo-target/target"
+    volumes:
+      - .:/code:cached
+      - target:/cargo-target
+      - cargo:/usr/local/cargo
+      - ~/.ssh:/root/.ssh
+
+volumes:
+  target:
+  cargo:

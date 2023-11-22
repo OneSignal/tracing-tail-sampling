@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cargo check --all --all-features
+cargo check --all --tests --all-features
+
+for i in {1..5}
+do
+    cargo publish --registry=onesignal --no-verify --allow-dirty && break || sleep 5
+done
