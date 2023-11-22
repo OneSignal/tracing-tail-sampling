@@ -14,7 +14,7 @@ tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { version = "0.1" }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
 opentelemetry = { version = ">=0.18, <0.20", default-features = false, features = ["trace"] }
-uuid = { version = "0.8", features = ["v4"] }
+uuid = { version = ">= 0.8, < 2", features = ["v4"] }
 
 [dev-dependencies]
 async-trait = "0.1"
