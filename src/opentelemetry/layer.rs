@@ -1,4 +1,4 @@
-// Copied from https://github.com/tokio-rs/tracing/blob/master/tracing-opentelemetry/src/layer.rs
+// Copied from https://github.com/tokio-rs/tracing-opentelemetry/blob/v0.19.0/src/layer.rs
 //
 // Copyright (c) 2019 Tokio Contributors
 //
