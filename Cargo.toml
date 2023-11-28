@@ -19,4 +19,4 @@ uuid = { version = ">= 0.8, < 2", features = ["v4"] }
 [dev-dependencies]
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
-opentelemetry-jaeger = "0.17"
+opentelemetry-jaeger = { version = ">=0.17, <0.19" }
