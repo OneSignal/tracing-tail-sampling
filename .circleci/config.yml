@@ -46,7 +46,7 @@ jobs:
     steps:
       - checkout
       - restore_cache: *restore_cache
-      - run: ./script/deploy
+      - run: env CARGO_REGISTRIES_ONESIGNAL_TOKEN="${CLOUDSMITH_API_KEY}" ./script/deploy
 
 workflows:
   version: 2
