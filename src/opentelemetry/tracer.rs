@@ -28,6 +28,7 @@
 
 use opentelemetry::sdk::trace::{Tracer, TracerProvider};
 use opentelemetry::trace::OrderMap;
+use opentelemetry::trace::{SamplingDecision, SamplingResult};
 use opentelemetry::{
     trace as otel,
     trace::{
@@ -36,7 +37,6 @@ use opentelemetry::{
     },
     Context as OtelContext,
 };
-use opentelemetry::trace::{SamplingDecision, SamplingResult};
 
 /// An interface for authors of OpenTelemetry SDKs to build pre-sampled tracers.
 ///

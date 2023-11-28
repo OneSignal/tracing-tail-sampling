@@ -1,0 +1,69 @@
+version: 2.1
+
+restore_cache: &restore_cache
+  keys:
+    - v1-cargo-cache-{{ checksum "Cargo.toml" }}
+    - v1-cargo-cache-
+
+save_cache: &save_cache
+  key: v1-cargo-cache-{{ checksum "Cargo.toml" }}
+  paths:
+    - /usr/local/cargo/registry
+    - /usr/local/cargo/bin
+    - target
+
+jobs:
+  lint_and_test:
+    docker:
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    steps:
+      - checkout
+      - restore_cache: *restore_cache
+      - run: cargo fmt -- --check
+      - run: cargo test --all --verbose
+
+  build_and_save:
+    docker:
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    steps:
+      - checkout
+      - restore_cache: *restore_cache
+      - run: cargo build --release
+      - save_cache: *save_cache
+
+  cloudsmith-deploy:
+    docker:
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+        auth:
+          username: $DOCKER_LOGIN
+          password: $DOCKER_PASSWORD
+    steps:
+      - checkout
+      - restore_cache: *restore_cache
+      - run: env CARGO_REGISTRIES_ONESIGNAL_TOKEN="${CLOUDSMITH_API_KEY}" ./script/deploy
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - lint_and_test:
+          context: gcp-docker-auth
+      - build_and_save:
+          context: gcp-docker-auth
+      - cloudsmith-deploy:
+          requires:
+            - lint_and_test
+            - build_and_save
+          context:
+            - onesignal-global
+            - gcp-docker-auth
+          filters:
+            branches:
+              only:
+                - main
