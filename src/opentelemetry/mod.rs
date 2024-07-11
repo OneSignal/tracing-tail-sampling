@@ -79,13 +79,18 @@
 //! ## Examples
 //!
 //! ```
-//! use opentelemetry::sdk::export::trace::stdout;
+//! use opentelemetry::trace::TracerProvider as _;
+//! use opentelemetry_sdk::trace::TracerProvider;
+//! use opentelemetry_stdout::SpanExporter;
 //! use tracing::{error, span};
 //! use tracing_subscriber::layer::SubscriberExt;
 //! use tracing_subscriber::Registry;
 //!
-//! // Create a new OpenTelemetry pipeline
-//! let tracer = stdout::new_pipeline().install_simple();
+//! // Create a new OpenTelemetry tracer
+//! let provider = TracerProvider::builder()
+//!    .with_simple_exporter(SpanExporter::default())
+//!    .build();
+//! let tracer = provider.tracer("test-tracer");
 //!
 //! // Create a tracing layer with the configured tracer
 //! let telemetry = onesignal_tracing_tail_sample::opentelemetry::layer().with_tracer(tracer);

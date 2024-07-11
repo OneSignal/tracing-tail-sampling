@@ -1,6 +1,6 @@
 [package]
 name = "onesignal-tracing-tail-sample"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/OneSignal/tracing-tail-sampling/"
@@ -12,11 +12,16 @@ description = "Tail sampling support for tracing with OpenTelemetry"
 [dependencies]
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { version = "0.1" }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
-opentelemetry = { version = ">=0.18, <0.20", default-features = false, features = ["trace"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+    "registry",
+    "std",
+] }
+opentelemetry = { version = ">=0.23", default-features = false }
+opentelemetry_sdk = { version = ">=0.23" }
 uuid = { version = ">= 0.8, < 2", features = ["v4"] }
 
 [dev-dependencies]
 async-trait = "0.1"
 criterion = { version = "0.3", default_features = false }
-opentelemetry-jaeger = { version = ">=0.17, <0.19" }
+opentelemetry-jaeger = { version = ">=0.22" }
+opentelemetry-stdout = { version = ">=0.4" }

@@ -44,7 +44,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
-    /// use opentelemetry::sdk::propagation::TraceContextPropagator;
+    /// use opentelemetry_sdk::propagation::TraceContextPropagator;
     /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
@@ -78,7 +78,7 @@ pub trait OpenTelemetrySpanExt {
     ///
     /// ```rust
     /// use opentelemetry::{propagation::TextMapPropagator, trace::TraceContextExt};
-    /// use opentelemetry::sdk::propagation::TraceContextPropagator;
+    /// use opentelemetry_sdk::propagation::TraceContextPropagator;
     /// use onesignal_tracing_tail_sample::opentelemetry::OpenTelemetrySpanExt;
     /// use std::collections::HashMap;
     /// use tracing::Span;
@@ -170,7 +170,7 @@ impl OpenTelemetrySpanExt for tracing::Span {
                     get_context.with_context(subscriber, id, move |data, _tracer| {
                         if let Some(cx) = cx.take() {
                             let attr = att.take().unwrap_or_default();
-                            let follows_link = opentelemetry::trace::Link::new(cx, attr);
+                            let follows_link = opentelemetry::trace::Link::new(cx, attr, 0);
                             data.builder
                                 .links
                                 .get_or_insert_with(|| Vec::with_capacity(1))
