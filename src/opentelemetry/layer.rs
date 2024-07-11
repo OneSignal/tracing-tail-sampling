@@ -247,7 +247,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     fn record(&mut self, attribute: KeyValue) {
         debug_assert!(self.0.attributes.is_some());
         if let Some(v) = self.0.attributes.as_mut() {
-            v.push(KeyValue::new(attribute.key, attribute.value));
+            v.push(attribute);
         }
     }
 }
