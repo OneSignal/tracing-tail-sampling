@@ -26,8 +26,6 @@
 // IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-use opentelemetry::sdk::trace::{Tracer, TracerProvider};
-use opentelemetry::trace::OrderMap;
 use opentelemetry::trace::{SamplingDecision, SamplingResult};
 use opentelemetry::{
     trace as otel,
@@ -37,6 +35,7 @@ use opentelemetry::{
     },
     Context as OtelContext,
 };
+use opentelemetry_sdk::trace::{Tracer, TracerProvider};
 
 /// An interface for authors of OpenTelemetry SDKs to build pre-sampled tracers.
 ///
@@ -116,9 +115,8 @@ impl PreSampledTracer for Tracer {
                 trace_id,
                 &builder.name,
                 builder.span_kind.as_ref().unwrap_or(&SpanKind::Internal),
-                &builder.attributes.as_ref().unwrap_or(&OrderMap::new()),
+                &builder.attributes.as_ref().unwrap_or(&vec![]),
                 builder.links.as_deref().unwrap_or(&[]),
-                self.instrumentation_library(),
             ));
 
             process_sampling_result(
@@ -199,15 +197,15 @@ fn process_sampling_result(
 mod tests {
     use super::*;
     use crate::opentelemetry::OtelData;
-    use opentelemetry::sdk::trace::{config, Sampler, TracerProvider};
     use opentelemetry::trace::{SpanBuilder, SpanId, TracerProvider as _};
+    use opentelemetry_sdk::trace::{config, Sampler, TracerProvider};
 
     #[test]
     fn assigns_default_trace_id_if_missing() {
         let provider = TracerProvider::default();
         let tracer = provider.tracer("test");
         let mut builder = SpanBuilder::from_name("empty".to_string());
-        builder.span_id = Some(SpanId::from(1u64.to_be_bytes()));
+        builder.span_id = Some(SpanId::from(1u64));
         builder.trace_id = None;
         let parent_cx = OtelContext::new();
         let cx = tracer.sampled_context(&mut OtelData { builder, parent_cx });
@@ -262,8 +260,8 @@ mod tests {
 
     fn span_context(trace_flags: TraceFlags, is_remote: bool) -> SpanContext {
         SpanContext::new(
-            TraceId::from(1u128.to_be_bytes()),
-            SpanId::from(1u64.to_be_bytes()),
+            TraceId::from(1u128),
+            SpanId::from(1u64),
             trace_flags,
             is_remote,
             Default::default(),

@@ -247,7 +247,7 @@ impl<'a> SpanAttributeVisitor<'a> {
     fn record(&mut self, attribute: KeyValue) {
         debug_assert!(self.0.attributes.is_some());
         if let Some(v) = self.0.attributes.as_mut() {
-            v.insert(attribute.key, attribute.value);
+            v.push(attribute);
         }
     }
 }
@@ -505,22 +505,29 @@ where
             builder.trace_id = Some(self.tracer.new_trace_id());
         }
 
-        let builder_attrs = builder
-            .attributes
-            .get_or_insert(opentelemetry::trace::OrderMap::new());
+        let builder_attrs = builder.attributes.get_or_insert(vec![]);
 
         let meta = attrs.metadata();
 
         if let Some(filename) = meta.file() {
-            builder_attrs.insert("code.filepath".into(), filename.into());
+            builder_attrs.push(KeyValue::new(
+                Key::new("code.filepath"),
+                Value::from(filename),
+            ));
         }
 
         if let Some(module) = meta.module_path() {
-            builder_attrs.insert("code.namespace".into(), module.into());
+            builder_attrs.push(KeyValue::new(
+                Key::new("code.namespace"),
+                Value::from(module),
+            ));
         }
 
         if let Some(line) = meta.line() {
-            builder_attrs.insert("code.lineno".into(), (line as i64).into());
+            builder_attrs.push(KeyValue::new(
+                Key::new("code.lineno"),
+                Value::from(line as i64),
+            ));
         }
 
         attrs.record(&mut SpanAttributeVisitor(&mut builder));
@@ -589,7 +596,7 @@ where
             .span()
             .span_context()
             .clone();
-        let follows_link = otel::Link::new(follows_context, Vec::new());
+        let follows_link = otel::Link::new(follows_context, Vec::new(), 0);
         if let Some(ref mut links) = data.builder.links {
             links.push(follows_link);
         } else {
@@ -667,8 +674,8 @@ where
                     let idle_ns = KeyValue::new("idle_ns", timings.idle);
 
                     let attributes = builder.attributes.get_or_insert_with(|| Default::default());
-                    attributes.insert(busy_ns.key, busy_ns.value);
-                    attributes.insert(idle_ns.key, idle_ns.value);
+                    attributes.push(KeyValue::new(busy_ns.key, busy_ns.value));
+                    attributes.push(KeyValue::new(idle_ns.key, idle_ns.value));
                 }
             }
 
@@ -758,7 +765,7 @@ mod tests {
         where
             T: Into<Cow<'static, str>>,
         {
-            noop::NoopSpan::new()
+            noop::NoopSpan::DEFAULT
         }
         fn span_builder<T>(&self, name: T) -> otel::SpanBuilder
         where
@@ -775,7 +782,7 @@ mod tests {
                 builder,
                 parent_cx: parent_cx.clone(),
             });
-            noop::NoopSpan::new()
+            noop::NoopSpan::DEFAULT
         }
     }
 
@@ -801,6 +808,7 @@ mod tests {
             _: Vec<KeyValue>,
         ) {
         }
+        fn add_link(&mut self, _span_context: otel::SpanContext, _attributes: Vec<KeyValue>) {}
 
         fn span_context(&self) -> &otel::SpanContext {
             &self.0
@@ -881,10 +889,10 @@ mod tests {
     fn trace_id_from_existing_context() {
         let tracer = TestTracer(Arc::new(Mutex::new(None)));
         let subscriber = tracing_subscriber::registry().with(layer().with_tracer(tracer.clone()));
-        let trace_id = otel::TraceId::from(42u128.to_be_bytes());
+        let trace_id = otel::TraceId::from(42u128);
         let existing_cx = OtelContext::current_with_span(TestSpan(otel::SpanContext::new(
             trace_id,
-            otel::SpanId::from(1u64.to_be_bytes()),
+            otel::SpanId::from(1u64),
             TraceFlags::default(),
             false,
             Default::default(),
@@ -934,7 +942,7 @@ mod tests {
             .clone();
         let keys = attributes
             .iter()
-            .map(|(key, _)| key.as_str())
+            .map(|kv| kv.key.as_str())
             .collect::<Vec<&str>>();
         assert!(keys.contains(&"idle_ns"));
         assert!(keys.contains(&"busy_ns"));
@@ -1000,7 +1008,7 @@ mod tests {
 
         let key_values = attributes
             .into_iter()
-            .map(|(key, value)| (key.as_str().to_owned(), value))
+            .map(|kv| (kv.key.as_str().to_owned(), kv.value))
             .collect::<HashMap<_, _>>();
 
         assert_eq!(key_values["error"].as_str(), "user error");
