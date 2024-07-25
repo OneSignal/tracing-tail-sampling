@@ -15,7 +15,7 @@ save_cache: &save_cache
 jobs:
   lint_and_test:
     docker:
-      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.78.0-r1
         auth:
           username: $DOCKER_LOGIN
           password: $DOCKER_PASSWORD
@@ -27,7 +27,7 @@ jobs:
 
   build_and_save:
     docker:
-      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.78.0-r1
         auth:
           username: $DOCKER_LOGIN
           password: $DOCKER_PASSWORD
@@ -39,7 +39,7 @@ jobs:
 
   cloudsmith-deploy:
     docker:
-      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.73.0-r1
+      - image: europe-west4-docker.pkg.dev/core-infra-onesignal/development/rust-ubuntu:1.78.0-r1
         auth:
           username: $DOCKER_LOGIN
           password: $DOCKER_PASSWORD
