@@ -9,6 +9,10 @@ description = "Tail sampling support for tracing with OpenTelemetry"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# For those using cargo-udeps, ignore dev-dependencies that are only used in doctests.
+[package.metadata.cargo-udeps.ignore]
+development = ["opentelemetry-otlp", "opentelemetry-stdout"]
+
 [dependencies]
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-core = { version = "0.1" }
@@ -23,7 +27,5 @@ opentelemetry_sdk = { version = "0.24" }
 uuid = { version = ">= 0.8, < 2", features = ["v4"] }
 
 [dev-dependencies]
-async-trait = "0.1"
-criterion = { version = ">= 0.3, <= 0.5.1", default_features = false }
 opentelemetry-otlp = { version = "0.17", features = ["metrics"] }
 opentelemetry-stdout = { version = "0.5" }
